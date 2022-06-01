@@ -38,7 +38,8 @@ vault secrets enable -path=bjjkeys vault-plugin-secrets-bjj
 # It can be overridden by specifying `key` param in the request.
 vault kv put bjjkeys/keyXXX key_data=9c2186b8f709bb81817492a69f87ead951fc49050c7fceb6155e26a9a255dee4
 
-# Sign a message with the key `keyXXX`
+# Sign a message with the key `keyXXX`. `data` should be a hex encoded
+# little-endian representation of integer value to sign.
 curl -H "X-Vault-Token: <VAULT_TOKEN>" 'http://127.0.0.1:8200/v1/bjjkeys/keyXXX/sign?data=aa'
 
 # If private key stored not under `key_data` field, it can be overridden.

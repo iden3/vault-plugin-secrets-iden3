@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
@@ -20,7 +21,9 @@ import (
 
 const (
 	dataKeyPath      = "path"
+	dataKeyDest      = "dest"
 	dataKeyData      = "data"
+	dataKeyPublicKey = "public_key"
 	dataKeyKey       = "key"
 	dataKeySignature = "signature"
 )
@@ -129,6 +132,95 @@ func handleSign(b *kv.PassthroughBackend) framework.OperationFunc {
 	}
 }
 
+func handleMove() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request,
+		data *framework.FieldData) (*logical.Response, error) {
+
+		key := data.Get(dataKeyPath).(string)
+		destKey := data.Get(dataKeyDest).(string)
+
+		destKey = strings.TrimPrefix(destKey, "/")
+
+		if !strings.HasPrefix(destKey, req.MountPoint) {
+			return nil, fmt.Errorf(
+				"destination key must be in the same mount point |%v|%v|",
+				req.MountPoint, destKey)
+		}
+
+		destKey = strings.TrimPrefix(destKey, req.MountPoint)
+
+		// Read the path
+		out, err := req.Storage.Get(ctx, key)
+		if err != nil {
+			return nil, fmt.Errorf("read failed: %v", err)
+		}
+
+		// Fast-path the no data case
+		if out == nil {
+			return nil, nil
+		}
+
+		err = req.Storage.Put(ctx, &logical.StorageEntry{
+			Key:      destKey,
+			Value:    out.Value,
+			SealWrap: out.SealWrap,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("write failed: %v", err)
+		}
+
+		err = req.Storage.Delete(ctx, key)
+		if err != nil {
+			return nil, fmt.Errorf("delete failed: %v", err)
+		}
+
+		return nil, nil
+	}
+}
+
+func handlePublicKey() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request,
+		data *framework.FieldData) (*logical.Response, error) {
+
+		key := data.Get(dataKeyPath).(string)
+		pkKey := data.Get(dataKeyKey).(string)
+
+		// Read the path
+		out, err := req.Storage.Get(ctx, key)
+		if err != nil {
+			return nil, fmt.Errorf("read failed: %v", err)
+		}
+
+		// Fast-path the no data case
+		if out == nil {
+			return nil, nil
+		}
+
+		// Decode the data
+		var rawData map[string]interface{}
+
+		if err := jsonutil.DecodeJSON(out.Value, &rawData); err != nil {
+			return nil, fmt.Errorf("json decoding failed: %v", err)
+		}
+
+		pKey, err := decodePrivateKey(rawData, pkKey)
+		if err != nil {
+			return logical.ErrorResponse(err.Error()), nil
+		}
+
+		pubKeyComp := pKey.Public().Compress()
+
+		var resp *logical.Response
+		resp = &logical.Response{
+			Data: map[string]interface{}{
+				dataKeyPublicKey: hex.EncodeToString(pubKeyComp[:]),
+			},
+		}
+
+		return resp, nil
+	}
+}
+
 func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	error) {
 	var b logical.Backend
@@ -172,8 +264,61 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 
 				ExistenceCheck: handleExistenceCheck(),
 
-				HelpSynopsis:    "TODO: help synopsis",    // TODO
-				HelpDescription: "TODO: help description", // TODO
+				HelpSynopsis:    "Sign integer with BabyJubJub key",
+				HelpDescription: "",
+			},
+			{
+				Pattern: `(?P<path>.*)/move`,
+				Fields: map[string]*framework.FieldSchema{
+					dataKeyPath: {
+						Type:        framework.TypeString,
+						Description: "Location of the secret.",
+					},
+					dataKeyDest: {
+						Type:        framework.TypeString,
+						Description: "New location of the secret.",
+					},
+				},
+				Operations: map[logical.Operation]framework.OperationHandler{
+					logical.CreateOperation: &framework.PathOperation{
+						Callback: handleMove(),
+					},
+					logical.UpdateOperation: &framework.PathOperation{
+						Callback: handleMove(),
+					},
+				},
+				ExistenceCheck:  handleExistenceCheck(),
+				HelpSynopsis:    "Move to other path",
+				HelpDescription: "",
+			},
+			{
+				Pattern: `(?P<path>.*)/public`,
+
+				Fields: map[string]*framework.FieldSchema{
+					dataKeyPath: {
+						Type:        framework.TypeString,
+						Description: "Location of the secret.",
+					},
+					dataKeyKey: {
+						Type: framework.TypeString,
+						Description: "Key name under which private key is " +
+							"stored.",
+						Required: true,
+						Default:  "key_data",
+					},
+				},
+
+				Operations: map[logical.Operation]framework.OperationHandler{
+					logical.ReadOperation: &framework.PathOperation{
+						Callback: handlePublicKey(),
+					},
+				},
+
+				ExistenceCheck: handleExistenceCheck(),
+
+				HelpSynopsis: "Public Key for BabyJubJub private key",
+				HelpDescription: "Return hex encoded compressed public key " +
+					"for BabyJubJub private key",
 			},
 		},
 		pb.Paths...)

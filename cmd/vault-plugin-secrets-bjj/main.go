@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -221,6 +222,56 @@ func handlePublicKey() framework.OperationFunc {
 	}
 }
 
+func handleNewRandomKey() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request,
+		data *framework.FieldData) (*logical.Response, error) {
+
+		key := data.Get(dataKeyPath).(string)
+		privKeyFieldName := data.Get(dataKeyKey).(string)
+		if privKeyFieldName == "" {
+			return nil, errors.New("private key field name is required")
+		}
+
+		// Read the path
+		out, err := req.Storage.Get(ctx, key)
+		if err != nil {
+			return nil, fmt.Errorf("read failed: %v", err)
+		}
+		if out != nil {
+			return nil, fmt.Errorf("key already exists")
+		}
+
+		privKey := babyjub.NewRandPrivKey()
+		var obj = map[string]interface{}{
+			privKeyFieldName: hex.EncodeToString(privKey[:]),
+		}
+
+		for k, v := range req.Data {
+			if k == privKeyFieldName {
+				return nil, errors.New("extra data has a field conflicting " +
+					"with private key field name")
+			}
+			if k == dataKeyKey {
+				continue
+			}
+			obj[k] = v
+		}
+
+		entry := &logical.StorageEntry{Key: key}
+		entry.Value, err = json.Marshal(obj)
+		if err != nil {
+			return nil, fmt.Errorf("json encoding failed: %v", err)
+		}
+
+		err = req.Storage.Put(ctx, entry)
+		if err != nil {
+			return nil, fmt.Errorf("failed to write: %v", err)
+		}
+
+		return nil, nil
+	}
+}
+
 func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	error) {
 	var b logical.Backend
@@ -319,6 +370,37 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 				HelpSynopsis: "Public Key for BabyJubJub private key",
 				HelpDescription: "Return hex encoded compressed public key " +
 					"for BabyJubJub private key",
+			},
+			{
+				Pattern: `(?P<path>.*)/random`,
+
+				Fields: map[string]*framework.FieldSchema{
+					dataKeyPath: {
+						Type:        framework.TypeString,
+						Description: "Location of the secret.",
+					},
+					dataKeyKey: {
+						Type: framework.TypeString,
+						Description: "Key name under which private key is " +
+							"stored.",
+						Required: true,
+						Default:  "key_data",
+					},
+				},
+
+				Operations: map[logical.Operation]framework.OperationHandler{
+					logical.CreateOperation: &framework.PathOperation{
+						Callback: handleNewRandomKey(),
+					},
+					logical.UpdateOperation: &framework.PathOperation{
+						Callback: handleNewRandomKey(),
+					},
+				},
+
+				ExistenceCheck: handleExistenceCheck(),
+
+				HelpSynopsis:    "Create new random BabyJubJub private key",
+				HelpDescription: "",
 			},
 		},
 		pb.Paths...)

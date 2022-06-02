@@ -45,3 +45,49 @@ curl -H "X-Vault-Token: <VAULT_TOKEN>" 'http://127.0.0.1:8200/v1/bjjkeys/keyXXX/
 # If private key stored not under `key_data` field, it can be overridden.
 curl -H "X-Vault-Token: <VAULT_TOKEN>" 'http://127.0.0.1:8200/v1/bjjkeys/keyXXX/sign?data=aa&key=priv_key'
 ```
+
+## Create new random key
+
+To create a new random key, send POST request to some path with `/random`
+suffix. Optionally private key field name may be overridden with parameter
+`key`. Default value for `key` is `key_data`.
+
+Extra data may be added to key with optionally additional parameters to POST
+request.
+
+```
+$ curl -X POST -H "X-Vault-Token: <VAULT_TOKEN>" \
+        'http://127.0.0.1:8200/v1/bjjsecret4/keys/k1/random'
+$ vault kv get bjjsecret4/keys/k1
+====== Data ======
+Key         Value
+---         -----
+key_data    bebf34257cfd2a4bc39d15707d44a287f2a6f8bee53674111d6e1b93bc378a1a
+
+
+## Set custom field name for key data:
+
+$ curl -X POST -H "X-Vault-Token: <VAULT_TOKEN>" \
+        -d '{"key": "private_key"}' \
+        'http://127.0.0.1:8200/v1/bjjsecret4/keys/k2/random'
+
+$ vault kv get bjjsecret4/keys/k2
+======= Data =======
+Key            Value
+---            -----
+private_key    bebf34257cfd2a4bc39d15707d44a287f2a6f8bee53674111d6e1b93bc378a1a
+
+
+## Set extra data for key:
+
+$ curl -X POST -H "X-Vault-Token: <VAULT_TOKEN>" \
+        -d '{"type": "BJJ"}' \
+        'http://127.0.0.1:8200/v1/bjjsecret4/keys/k3/random'
+
+$ vault kv get bjjsecret4/keys/k3
+======= Data =======
+Key        Value
+---        -----
+key_data   bebf34257cfd2a4bc39d15707d44a287f2a6f8bee53674111d6e1b93bc378a1a
+type       BJJ
+```

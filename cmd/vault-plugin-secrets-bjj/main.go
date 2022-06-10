@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/vault/sdk/plugin"
 	"github.com/iden3/go-iden3-crypto/babyjub"
+	"github.com/iden3/go-iden3-crypto/utils"
 )
 
 const (
@@ -71,13 +72,11 @@ func decodePrivateKey(rawData map[string]interface{},
 }
 
 func decodeDigestData(digestHex string) (*big.Int, error) {
-
 	digestBytes, err := hex.DecodeString(digestHex)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode digest from hex: %v", err)
 	}
-
-	return new(big.Int).SetBytes(digestBytes), nil
+	return new(big.Int).SetBytes(utils.SwapEndianness(digestBytes)), nil
 }
 
 func handleSign(b *kv.PassthroughBackend) framework.OperationFunc {
@@ -238,7 +237,7 @@ func handleNewRandomKey() framework.OperationFunc {
 			return nil, fmt.Errorf("read failed: %v", err)
 		}
 		if out != nil {
-			return nil, fmt.Errorf("key already exists")
+			return logical.ErrorResponse("key already exists"), nil
 		}
 
 		privKey := babyjub.NewRandPrivKey()

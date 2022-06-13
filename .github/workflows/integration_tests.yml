@@ -11,10 +11,14 @@ jobs:
       matrix:
         containers: [ 1.18.3-bullseye ]
     runs-on: ubuntu-22.04
-    container: golang:${{ matrix.containers }}
+    container:
+      image: golang:${{ matrix.containers }}
+      volumes:
+        - vault_plugins:/vault/plugins
     env:
       VAULT_TOKEN: vaultpwd
       VAULT_ADDR: http://vault:8200
+      PLUGIN_URL: https://github.com/iden3/vault-plugin-secrets-bjj/releases/download/v0.0.1/vault-plugin-secrets-bjj_0.0.1_linux_amd64.tar.gz
     steps:
 #      - name: Checkout code
 #        uses: actions/checkout@v3
@@ -30,13 +34,16 @@ jobs:
 #        run: go test -v -race -timeout=60s ./...
 #      - run: sleep 10
       - run: >
-          curl --fail -H "X-Vault-Token: vaultpwd"
+          curl --fail -H "X-Vault-Token: ${VAULT_TOKEN}"
           ${VAULT_ADDR}/v1/sys/health
+      - run: curl -o - --fail -L ${PLUGIN_URL} | tar -C /vault/plugins -xzf - vault-plugin-secrets-bjj
     services:
       vault:
         image: vault:1.10.3
         ports:
           - 8200:8200
+        volumes:
+          - vault_plugins:/vault/plugins
         env:
           SKIP_SETCAP: true
           VAULT_DEV_ROOT_TOKEN_ID: vaultpwd

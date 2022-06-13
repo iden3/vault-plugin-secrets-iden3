@@ -18,4 +18,11 @@ jobs:
       - uses: actions/setup-go@v3
         with:
           go-version: "1.18.3"
-      - run: go test -v ./...
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - run: go test -v -race ./...

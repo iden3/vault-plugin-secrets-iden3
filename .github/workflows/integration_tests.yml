@@ -19,6 +19,7 @@ jobs:
       VAULT_TOKEN: vaultpwd
       VAULT_ADDR: http://vault:8200
       PLUGIN_URL: https://github.com/iden3/vault-plugin-secrets-bjj/releases/download/v0.0.1/vault-plugin-secrets-bjj_0.0.1_linux_amd64.tar.gz
+      PLUGIN_SHA256: 01804fe88b00bae00664b5cbef99bfb5857e28cfc27af2f8d897f6daef7ce672
     steps:
 #      - name: Checkout code
 #        uses: actions/checkout@v3
@@ -36,7 +37,12 @@ jobs:
       - run: >
           curl --fail -H "X-Vault-Token: ${VAULT_TOKEN}"
           ${VAULT_ADDR}/v1/sys/health
-      - run: curl -o - --fail -L ${PLUGIN_URL} | tar -C /vault/plugins -xzf - vault-plugin-secrets-bjj
+      - run: curl -s -o - --fail -L ${PLUGIN_URL} | tar -C /vault/plugins -xzf - vault-plugin-secrets-bjj
+      - run: >
+          curl -X PUT -s --fail -H "X-Vault-Token: $(VAULT_TOKEN)"
+          -d '{"type":0,"command":"vault-plugin-secrets-bjj","sha256":"${PLUGIN_SHA256}"}'
+          http://127.0.0.1:8200/v1/sys/plugins/catalog/vault-plugin-secrets-bjj
+      - run: uname -a
     services:
       vault:
         image: vault:1.10.3

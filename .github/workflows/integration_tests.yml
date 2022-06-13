@@ -14,7 +14,7 @@ jobs:
     container: golang:${{ matrix.containers }}
     env:
       VAULT_TOKEN: vaultpwd
-      VAULT_ADDR: http://localhost:8200
+      VAULT_ADDR: http://vault:8200
     steps:
 #      - name: Checkout code
 #        uses: actions/checkout@v3
@@ -31,7 +31,7 @@ jobs:
 #      - run: sleep 10
       - run: >
           curl --fail -H "X-Vault-Token: vaultpwd"
-          http://vault:8200/v1/sys/health
+          ${{ VAULT_ADDR }}/v1/sys/health
     services:
       vault:
         image: vault:1.10.3

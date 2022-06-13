@@ -31,7 +31,7 @@ jobs:
 #      - run: sleep 10
       - run: >
           curl --fail -H "X-Vault-Token: vaultpwd"
-          ${{ VAULT_ADDR }}/v1/sys/health
+          ${VAULT_ADDR}/v1/sys/health
     services:
       vault:
         image: vault:1.10.3

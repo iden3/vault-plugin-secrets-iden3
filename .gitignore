@@ -16,3 +16,4 @@
 
 cmd/vault-plugin-secrets-bjj/vault-plugin-secrets-bjj
 .idea/
+dist/

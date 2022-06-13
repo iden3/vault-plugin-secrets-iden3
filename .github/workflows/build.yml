@@ -26,3 +26,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - run: go test -v -race ./...
+      - uses: goreleaser/goreleaser-action@v3
+        if: success() && startsWith(github.ref, 'refs/tags/')
+        with:
+          version: "v1.9.2"
+          args: release --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

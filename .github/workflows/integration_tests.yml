@@ -39,7 +39,7 @@ jobs:
           ${VAULT_ADDR}/v1/sys/health
       - run: curl -s -o - --fail -L ${PLUGIN_URL} | tar -C /vault/plugins -xzf - vault-plugin-secrets-bjj
       - run: >
-          curl -X PUT -s --fail -H "X-Vault-Token: $(VAULT_TOKEN)"
+          curl -X PUT -s --fail -H "X-Vault-Token: ${VAULT_TOKEN}"
           -d '{"type":0,"command":"vault-plugin-secrets-bjj","sha256":"${PLUGIN_SHA256}"}'
           http://127.0.0.1:8200/v1/sys/plugins/catalog/vault-plugin-secrets-bjj
       - run: uname -a

@@ -17,8 +17,8 @@ jobs:
       VAULT_ADDR: http://localhost:8200
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
-      - uses: actions/cache@v2
+        uses: actions/checkout@v3
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cache/go-build
@@ -34,6 +34,8 @@ jobs:
     services:
       vault:
         image: vault:1.10.3
+        ports:
+          - "8200:8200"
         env:
           SKIP_SETCAP: true
           VAULT_DEV_ROOT_TOKEN_ID: vaultpwd

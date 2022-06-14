@@ -31,6 +31,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - run: pwd
+
       - run: go build -o /vault/plugins/vault-plugin-secrets-bjj
 
       - run: >

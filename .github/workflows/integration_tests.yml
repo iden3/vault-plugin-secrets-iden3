@@ -31,8 +31,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - run: go build -o /vault/plugins/vault-plugin-secrets-bjj
+      - run: go build
         working-directory: ./cmd/vault-plugin-secrets-bjj
+
+      - run: cp vault-plugin-secrets-bjj /vault/plugins/vault-plugin-secrets-bjj
 
       - run: ls -l /vault/plugins
 
@@ -51,7 +53,7 @@ jobs:
       vault:
         image: vault:1.10.3
         volumes:
-          - vault_plugins:/vault/plugins
+        - vault_plugins:/vault/plugins
         env:
           SKIP_SETCAP: true
           VAULT_DEV_ROOT_TOKEN_ID: vaultpwd

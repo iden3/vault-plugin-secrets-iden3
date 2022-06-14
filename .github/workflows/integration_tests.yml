@@ -15,7 +15,8 @@ jobs:
     env:
       VAULT_TOKEN: vaultpwd
       VAULT_ADDR: http://vault:8200
-      PLUGIN_SECRETS_PATH: bjj
+      VAULT_BJJ_PATH: bjj
+
     steps:
       - run: apk add --update-cache openssl curl build-base
 
@@ -23,8 +24,6 @@ jobs:
 
       - run: go build -o /vault/plugins/vault-plugin-secrets-bjj
         working-directory: cmd/vault-plugin-secrets-bjj
-
-#      - run: chown 1001:122 /vault/plugins/vault-plugin-secrets-bjj
 
       - uses: actions/cache@v3
         with:
@@ -44,9 +43,10 @@ jobs:
       - run: >
           curl -X POST --fail -s -H "X-Vault-Token: ${VAULT_TOKEN}" 
           -d '{"type":"vault-plugin-secrets-bjj","description":"","config":{"options":null,"default_lease_ttl":"0s","max_lease_ttl":"0s","force_no_cache":false},"local":false,"seal_wrap":false,"external_entropy_access":false,"options":null}'
-          ${VAULT_ADDR}/v1/sys/mounts/${PLUGIN_SECRETS_PATH}
+          ${VAULT_ADDR}/v1/sys/mounts/${VAULT_BJJ_PATH}
 
       - run: go test -v -race -timeout=60s ./...
+
     services:
       vault:
         image: vault:1.10.3

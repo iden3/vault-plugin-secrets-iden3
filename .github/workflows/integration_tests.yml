@@ -38,6 +38,7 @@ jobs:
 #        run: go test -v -race -timeout=60s ./...
 #      - run: sleep 10
       - run: ls -l /vault/plugins/
+      - run: apk add --update-cache openssl
       - run: openssl dgst -sha256 /vault/plugins/*
 #      - run: curl -s -o - --fail -L ${PLUGIN_URL} | tar -C /vault/plugins -xzf - vault-plugin-secrets-bjj
 #      - run: ls -l /vault/plugins/

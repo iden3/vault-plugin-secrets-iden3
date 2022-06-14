@@ -31,9 +31,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - run: pwd
-
       - run: go build -o /vault/plugins/vault-plugin-secrets-bjj
+        working-directory: ./cmd/vault-plugin-secrets-bjj
 
       - run: >
           export PLUGIN_SHA256=`openssl dgst -r -sha256 /vault/plugins/vault-plugin-secrets-bjj | awk '{print $1}'` && 
@@ -45,7 +44,7 @@ jobs:
           -d '{"type":"vault-plugin-secrets-bjj","description":"","config":{"options":null,"default_lease_ttl":"0s","max_lease_ttl":"0s","force_no_cache":false},"local":false,"seal_wrap":false,"external_entropy_access":false,"options":null}'
           ${VAULT_ADDR}/v1/sys/mounts/${VAULT_BJJ_PATH}
 
-      - run: go test -v -race -timeout=60s ./...
+      - run: pwd && go test -v -race -timeout=60s ./...
     services:
       vault:
         image: vault:1.10.3

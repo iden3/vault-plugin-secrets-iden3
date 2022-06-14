@@ -22,8 +22,7 @@ jobs:
       PLUGIN_SHA256: 01804fe88b00bae00664b5cbef99bfb5857e28cfc27af2f8d897f6daef7ce672
       PLUGIN_SECRETS_PATH: bjj
     steps:
-#      - name: Checkout code
-#        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 #      - uses: actions/cache@v3
 #        with:
 #          path: |

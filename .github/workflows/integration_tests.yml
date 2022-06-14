@@ -35,10 +35,8 @@ jobs:
 #      - name: Unit Tests
 #        run: go test -v -race -timeout=60s ./...
 #      - run: sleep 10
-      - run: >
-          curl --fail -H "X-Vault-Token: ${VAULT_TOKEN}"
-          ${VAULT_ADDR}/v1/sys/health
       - run: curl -s -o - --fail -L ${PLUGIN_URL} | tar -C /vault/plugins -xzf - vault-plugin-secrets-bjj
+      - run: ls -l /vault/plugins/
       - run: >
           curl -X PUT --fail -s -H "X-Vault-Token: ${VAULT_TOKEN}"
           -d "{\"type\":0,\"command\":\"vault-plugin-secrets-bjj\",\"sha256\":\"${PLUGIN_SHA256}\"}"

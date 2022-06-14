@@ -34,7 +34,7 @@ jobs:
       - run: go build
         working-directory: ./cmd/vault-plugin-secrets-bjj
 
-      - run: cp vault-plugin-secrets-bjj /vault/plugins/vault-plugin-secrets-bjj
+      - run: cp cmd/vault-plugin-secrets-bjj/vault-plugin-secrets-bjj /vault/plugins/vault-plugin-secrets-bjj
 
       - run: ls -l /vault/plugins
 

@@ -19,7 +19,7 @@ jobs:
       VAULT_TOKEN: vaultpwd
       VAULT_ADDR: http://vault:8200
       PLUGIN_URL: https://github.com/iden3/vault-plugin-secrets-bjj/releases/download/v0.0.1/vault-plugin-secrets-bjj_0.0.1_linux_amd64.tar.gz
-      PLUGIN_SHA256: 01804fe88b00bae00664b5cbef99bfb5857e28cfc27af2f8d897f6daef7ce672
+      # PLUGIN_SHA256: 01804fe88b00bae00664b5cbef99bfb5857e28cfc27af2f8d897f6daef7ce672
       PLUGIN_SECRETS_PATH: bjj
     steps:
       - uses: actions/checkout@v3
@@ -40,6 +40,7 @@ jobs:
 #      - run: curl -s -o - --fail -L ${PLUGIN_URL} | tar -C /vault/plugins -xzf - vault-plugin-secrets-bjj
       - run: ls -l /vault/plugins/
       - run: >
+          export PLUGIN_SHA256=`openssl dgst -r -sha256 /vault/plugins/vault-plugin-secrets-bjj | awk '{print $1}'` &&
           curl -X PUT --fail -s -H "X-Vault-Token: ${VAULT_TOKEN}"
           -d "{\"type\":0,\"command\":\"vault-plugin-secrets-bjj\",\"sha256\":\"${PLUGIN_SHA256}\"}"
           ${VAULT_ADDR}/v1/sys/plugins/catalog/vault-plugin-secrets-bjj

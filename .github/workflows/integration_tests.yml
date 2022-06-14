@@ -34,23 +34,23 @@ jobs:
       - run: go build
         working-directory: ./cmd/vault-plugin-secrets-bjj
 
-#      - run: cp cmd/vault-plugin-secrets-bjj/vault-plugin-secrets-bjj /vault/plugins/vault-plugin-secrets-bjj
-#
-#      - run: ls -l /vault/plugins
-#
-#      - run: sleep 5
-#
-#      - run: >
-#          export PLUGIN_SHA256=`openssl dgst -r -sha256 /vault/plugins/vault-plugin-secrets-bjj | awk '{print $1}'` &&
-#          curl -X PUT --fail -i -H "X-Vault-Token: ${VAULT_TOKEN}"
-#          -d "{\"type\":0,\"command\":\"vault-plugin-secrets-bjj\",\"sha256\":\"${PLUGIN_SHA256}\"}"
-#          ${VAULT_ADDR}/v1/sys/plugins/catalog/vault-plugin-secrets-bjj
-#      - run: >
-#          curl -X POST --fail -i -H "X-Vault-Token: ${VAULT_TOKEN}"
-#          -d '{"type":"vault-plugin-secrets-bjj","description":"","config":{"options":null,"default_lease_ttl":"0s","max_lease_ttl":"0s","force_no_cache":false},"local":false,"seal_wrap":false,"external_entropy_access":false,"options":null}'
-#          ${VAULT_ADDR}/v1/sys/mounts/${VAULT_BJJ_PATH}
-#
-#      - run: pwd && go test -v -race -timeout=60s ./...
+      - run: cp cmd/vault-plugin-secrets-bjj/vault-plugin-secrets-bjj /vault/plugins/vault-plugin-secrets-bjj
+
+      - run: ls -l /vault/plugins
+
+      - run: sleep 5
+
+      - run: >
+          export PLUGIN_SHA256=`openssl dgst -r -sha256 /vault/plugins/vault-plugin-secrets-bjj | awk '{print $1}'` &&
+          curl -X PUT --fail -i -H "X-Vault-Token: ${VAULT_TOKEN}"
+          -d "{\"type\":0,\"command\":\"vault-plugin-secrets-bjj\",\"sha256\":\"${PLUGIN_SHA256}\"}"
+          ${VAULT_ADDR}/v1/sys/plugins/catalog/vault-plugin-secrets-bjj
+      - run: >
+          curl -X POST --fail -i -H "X-Vault-Token: ${VAULT_TOKEN}"
+          -d '{"type":"vault-plugin-secrets-bjj","description":"","config":{"options":null,"default_lease_ttl":"0s","max_lease_ttl":"0s","force_no_cache":false},"local":false,"seal_wrap":false,"external_entropy_access":false,"options":null}'
+          ${VAULT_ADDR}/v1/sys/mounts/${VAULT_BJJ_PATH}
+
+      - run: pwd && go test -v -race -timeout=60s ./...
     services:
       vault:
         image: vault:1.10.3

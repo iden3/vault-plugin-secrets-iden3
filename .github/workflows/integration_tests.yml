@@ -34,6 +34,8 @@ jobs:
       - run: go build -o /vault/plugins/vault-plugin-secrets-bjj
         working-directory: ./cmd/vault-plugin-secrets-bjj
 
+      - run: ls -l /vault/plugins
+
       - run: >
           export PLUGIN_SHA256=`openssl dgst -r -sha256 /vault/plugins/vault-plugin-secrets-bjj | awk '{print $1}'` && 
           curl -X PUT --fail -i -H "X-Vault-Token: ${VAULT_TOKEN}"

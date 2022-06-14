@@ -37,8 +37,11 @@ jobs:
 #      - name: Unit Tests
 #        run: go test -v -race -timeout=60s ./...
 #      - run: sleep 10
+      - run: ls -l /vault/plugins/
+      - run: openssl dgst -sha256 /vault/plugins/*
       - run: curl -s -o - --fail -L ${PLUGIN_URL} | tar -C /vault/plugins -xzf - vault-plugin-secrets-bjj
       - run: ls -l /vault/plugins/
+      - run: openssl dgst -sha256 /vault/plugins/*
 #           export PLUGIN_SHA256=`openssl dgst -r -sha256 /vault/plugins/vault-plugin-secrets-bjj | awk '{print $1}'` &&
       - run: >
           curl -X PUT --fail -i -H "X-Vault-Token: ${VAULT_TOKEN}"

@@ -9,7 +9,7 @@ jobs:
   test:
     strategy:
       matrix:
-        containers: [ 1.18.3-bullseye ]
+        containers: [ 1.18.3-alpine3.16 ]
     runs-on: ubuntu-22.04
     container:
       image: golang:${{ matrix.containers }}
@@ -39,9 +39,9 @@ jobs:
 #      - run: sleep 10
       - run: ls -l /vault/plugins/
       - run: openssl dgst -sha256 /vault/plugins/*
-      - run: curl -s -o - --fail -L ${PLUGIN_URL} | tar -C /vault/plugins -xzf - vault-plugin-secrets-bjj
-      - run: ls -l /vault/plugins/
-      - run: openssl dgst -sha256 /vault/plugins/*
+#      - run: curl -s -o - --fail -L ${PLUGIN_URL} | tar -C /vault/plugins -xzf - vault-plugin-secrets-bjj
+#      - run: ls -l /vault/plugins/
+#      - run: openssl dgst -sha256 /vault/plugins/*
       - run: >
           export PLUGIN_SHA256=`openssl dgst -r -sha256 /vault/plugins/vault-plugin-secrets-bjj | awk '{print $1}'` &&
           curl -X PUT --fail -i -H "X-Vault-Token: ${VAULT_TOKEN}"

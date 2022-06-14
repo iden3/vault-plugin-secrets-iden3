@@ -1,0 +1,59 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    container:
+      image: golang:1.18.3-alpine3.16
+      volumes:
+        - vault_plugins:/vault/plugins
+    env:
+      VAULT_TOKEN: vaultpwd
+      VAULT_ADDR: http://vault:8200
+      VAULT_BJJ_PATH: bjj
+
+    steps:
+      - run: apk add --update-cache openssl curl build-base
+
+      - uses: actions/checkout@v3
+
+      - run: go build -o /vault/plugins/vault-plugin-secrets-bjj
+        working-directory: cmd/vault-plugin-secrets-bjj
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            /go/pkg/mod
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - run: >
+          export PLUGIN_SHA256=`openssl dgst -r -sha256 /vault/plugins/vault-plugin-secrets-bjj | awk '{print $1}'` &&
+          curl -X PUT --fail -i -H "X-Vault-Token: ${VAULT_TOKEN}"
+          -d "{\"type\":0,\"command\":\"vault-plugin-secrets-bjj\",\"sha256\":\"${PLUGIN_SHA256}\"}"
+          ${VAULT_ADDR}/v1/sys/plugins/catalog/vault-plugin-secrets-bjj
+      - run: >
+          curl -X POST --fail -s -H "X-Vault-Token: ${VAULT_TOKEN}" 
+          -d '{"type":"vault-plugin-secrets-bjj","description":"","config":{"options":null,"default_lease_ttl":"0s","max_lease_ttl":"0s","force_no_cache":false},"local":false,"seal_wrap":false,"external_entropy_access":false,"options":null}'
+          ${VAULT_ADDR}/v1/sys/mounts/${VAULT_BJJ_PATH}
+
+      - run: go test -v -race -timeout=60s ./...
+
+    services:
+      vault:
+        image: vault:1.10.3
+        ports:
+          - 8200:8200
+        volumes:
+          - vault_plugins:/vault/plugins
+        env:
+          SKIP_SETCAP: true
+          VAULT_DEV_ROOT_TOKEN_ID: vaultpwd
+          VAULT_LOCAL_CONFIG: '{"plugin_directory": "/vault/plugins"}'

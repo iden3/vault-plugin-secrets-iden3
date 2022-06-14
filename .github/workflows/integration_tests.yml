@@ -17,6 +17,8 @@ jobs:
       VAULT_ADDR: http://vault:8200
       PLUGIN_SECRETS_PATH: bjj
     steps:
+      - run: apk add --update-cache openssl curl build-base
+
       - uses: actions/checkout@v3
 
       - run: go build -o /vault/plugins/vault-plugin-secrets-bjj
@@ -34,7 +36,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - run: apk add --update-cache openssl curl
       - run: >
           export PLUGIN_SHA256=`openssl dgst -r -sha256 /vault/plugins/vault-plugin-secrets-bjj | awk '{print $1}'` &&
           curl -X PUT --fail -i -H "X-Vault-Token: ${VAULT_TOKEN}"

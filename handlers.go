@@ -12,7 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/helper/parseutil"
 	"github.com/hashicorp/vault/sdk/helper/wrapping"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/iden3/go-iden3-crypto/babyjub"
@@ -262,74 +261,71 @@ func handleSign(ctx context.Context, req *logical.Request,
 	return resp, nil
 }
 
-func handleRead(ctx context.Context, req *logical.Request,
-	data *framework.FieldData) (*logical.Response, error) {
+func getReadHandler(showPrivate bool) framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request,
+		data *framework.FieldData) (*logical.Response, error) {
 
-	key := data.Get("path").(string)
+		key := data.Get("path").(string)
 
-	showPrivate, err := parseutil.ParseBool(req.Data[dataKeyShowPrivate])
-	if err != nil {
-		return nil, err
-	}
-
-	// Read the path
-	out, err := req.Storage.Get(ctx, key)
-	if err != nil {
-		return nil, fmt.Errorf("read failed: %v", err)
-	}
-
-	// Fast-path the no data case
-	if out == nil {
-		return nil, nil
-	}
-
-	// Decode the data
-	var rawData map[string]interface{}
-
-	if err := jsonutil.DecodeJSON(out.Value, &rawData); err != nil {
-		return nil, fmt.Errorf("json decoding failed: %v", err)
-	}
-
-	privKeyStr, keyTp, err := extractKeyAndType(rawData)
-	if err != nil {
-		return nil, fmt.Errorf("unable to extract key and type: %v", err)
-	}
-
-	outData, ok := rawData[extraData].(map[string]interface{})
-	if !ok {
-		outData = make(map[string]interface{})
-	}
-
-	switch keyTp {
-	case keyTypeBJJ:
-		outData[dataKeyPublicKey], err = bjjPubKeyFromHex(privKeyStr)
-	case keyTypeEthereum:
-		outData[dataKeyPublicKey], err = ethPubKeyFromHex(privKeyStr)
-	default:
-		return logical.ErrorResponse("unsupported key type"), nil
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	outData[privKeyType] = keyTp.String()
-
-	if showPrivate {
-		outData[dataKeyPrivateKey] = rawData[privKeyMaterial]
-	}
-
-	resp := &logical.Response{Data: outData}
-
-	// Ensure seal wrapping is carried through if the response is
-	// response-wrapped
-	if out.SealWrap {
-		if resp.WrapInfo == nil {
-			resp.WrapInfo = &wrapping.ResponseWrapInfo{}
+		// Read the path
+		out, err := req.Storage.Get(ctx, key)
+		if err != nil {
+			return nil, fmt.Errorf("read failed: %v", err)
 		}
-		resp.WrapInfo.SealWrap = out.SealWrap
-	}
 
-	return resp, nil
+		// Fast-path the no data case
+		if out == nil {
+			return nil, nil
+		}
+
+		// Decode the data
+		var rawData map[string]interface{}
+
+		if err := jsonutil.DecodeJSON(out.Value, &rawData); err != nil {
+			return nil, fmt.Errorf("json decoding failed: %v", err)
+		}
+
+		privKeyStr, keyTp, err := extractKeyAndType(rawData)
+		if err != nil {
+			return nil, fmt.Errorf("unable to extract key and type: %v", err)
+		}
+
+		outData, ok := rawData[extraData].(map[string]interface{})
+		if !ok {
+			outData = make(map[string]interface{})
+		}
+
+		switch keyTp {
+		case keyTypeBJJ:
+			outData[dataKeyPublicKey], err = bjjPubKeyFromHex(privKeyStr)
+		case keyTypeEthereum:
+			outData[dataKeyPublicKey], err = ethPubKeyFromHex(privKeyStr)
+		default:
+			return logical.ErrorResponse("unsupported key type"), nil
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		outData[privKeyType] = keyTp.String()
+
+		if showPrivate {
+			outData[dataKeyPrivateKey] = rawData[privKeyMaterial]
+		}
+
+		resp := &logical.Response{Data: outData}
+
+		// Ensure seal wrapping is carried through if the response is
+		// response-wrapped
+		if out.SealWrap {
+			if resp.WrapInfo == nil {
+				resp.WrapInfo = &wrapping.ResponseWrapInfo{}
+			}
+			resp.WrapInfo.SealWrap = out.SealWrap
+		}
+
+		return resp, nil
+	}
 }
 
 func handleWrite(ctx context.Context, req *logical.Request,

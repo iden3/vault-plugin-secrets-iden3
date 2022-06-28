@@ -10,14 +10,13 @@ import (
 )
 
 const (
-	dataKeyPath        = "path"
-	dataKeyDest        = "dest"
-	dataKeyData        = "data"
-	dataKeyPublicKey   = "public_key"
-	dataKeyPrivateKey  = "private_key"
-	dataKeyType        = "key_type"
-	dataKeySignature   = "signature"
-	dataKeyShowPrivate = "show_private"
+	dataKeyPath       = "path"
+	dataKeyDest       = "dest"
+	dataKeyData       = "data"
+	dataKeyPublicKey  = "public_key"
+	dataKeyPrivateKey = "private_key"
+	dataKeyType       = "key_type"
+	dataKeySignature  = "signature"
 )
 
 const (
@@ -174,7 +173,7 @@ func Factory(ctx context.Context,
 
 				Operations: map[logical.Operation]framework.OperationHandler{
 					logical.ReadOperation: &framework.PathOperation{
-						Callback: handleRead,
+						Callback: getReadHandler(false),
 					},
 					logical.CreateOperation: &framework.PathOperation{
 						Callback: handleWrite,
@@ -195,11 +194,32 @@ func Factory(ctx context.Context,
 				HelpSynopsis:    strings.TrimSpace(backendHelpSynopsis),
 				HelpDescription: strings.TrimSpace(backendHelpDescription),
 			},
+			{
+				Pattern: `private/(?P<path>.*)`,
+
+				Fields: map[string]*framework.FieldSchema{
+					"path": {
+						Type:        framework.TypeString,
+						Description: "Location of the key.",
+					},
+				},
+
+				Operations: map[logical.Operation]framework.OperationHandler{
+					logical.ReadOperation: &framework.PathOperation{
+						Callback: getReadHandler(true),
+					},
+				},
+
+				ExistenceCheck: handleExistenceCheck,
+
+				HelpSynopsis:    strings.TrimSpace(backendHelpSynopsis),
+				HelpDescription: strings.TrimSpace(backendHelpDescription),
+			},
 		},
 		Secrets: []*framework.Secret{
 			{
 				Type:  "kv",
-				Renew: handleRead,
+				Renew: getReadHandler(false),
 				Revoke: func(ctx context.Context, req *logical.Request,
 					data *framework.FieldData) (*logical.Response, error) {
 					// This is a no-op

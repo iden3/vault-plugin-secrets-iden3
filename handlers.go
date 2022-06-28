@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"path"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -31,13 +32,13 @@ func handleMove(ctx context.Context, req *logical.Request,
 
 	destKey = strings.TrimPrefix(destKey, "/")
 
-	if !strings.HasPrefix(destKey, req.MountPoint) {
+	wantPrefix := path.Join(req.MountPoint, "keys") + "/"
+	if !strings.HasPrefix(destKey, wantPrefix) {
 		return nil, fmt.Errorf(
-			"destination key must be in the same mount point |%v|%v|",
-			req.MountPoint, destKey)
+			"destination key path must have prefix %v", wantPrefix)
 	}
 
-	destKey = strings.TrimPrefix(destKey, req.MountPoint)
+	destKey = strings.TrimPrefix(destKey, wantPrefix)
 
 	// Read the path
 	out, err := req.Storage.Get(ctx, key)

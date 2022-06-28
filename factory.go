@@ -43,7 +43,7 @@ func Factory(ctx context.Context,
 
 		Paths: []*framework.Path{
 			{
-				Pattern: `(?P<path>.*)/sign`,
+				Pattern: `sign/(?P<path>.*)`,
 
 				Fields: map[string]*framework.FieldSchema{
 					dataKeyPath: {
@@ -70,7 +70,7 @@ func Factory(ctx context.Context,
 				HelpDescription: "",
 			},
 			{
-				Pattern: `(?P<path>.*)/move`,
+				Pattern: `move/(?P<path>.*)`,
 				Fields: map[string]*framework.FieldSchema{
 					dataKeyPath: {
 						Type:        framework.TypeString,
@@ -94,7 +94,7 @@ func Factory(ctx context.Context,
 				HelpDescription: "",
 			},
 			{
-				Pattern: `(?P<path>.*)/random`,
+				Pattern: `new/(?P<path>.*)`,
 
 				Fields: map[string]*framework.FieldSchema{
 					dataKeyPath: {
@@ -122,7 +122,7 @@ func Factory(ctx context.Context,
 
 				ExistenceCheck: handleExistenceCheck,
 
-				HelpSynopsis:    "Create new random BabyJubJub private key",
+				HelpSynopsis:    "Create a new random key",
 				HelpDescription: "",
 			},
 			{
@@ -163,7 +163,7 @@ func Factory(ctx context.Context,
 				HelpDescription: "",
 			},
 			{
-				Pattern: framework.MatchAllRegex("path"),
+				Pattern: `keys/(?P<path>.*)`,
 
 				Fields: map[string]*framework.FieldSchema{
 					"path": {

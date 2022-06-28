@@ -2,33 +2,46 @@ package vault_plugin_secrets_bjj
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
-	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
 const (
-	dataKeyPath      = "path"
-	dataKeyDest      = "dest"
-	dataKeyData      = "data"
-	dataKeyPublicKey = "public_key"
-	dataKeyKey       = "key"
-	dataKeySignature = "signature"
+	dataKeyPath        = "path"
+	dataKeyDest        = "dest"
+	dataKeyData        = "data"
+	dataKeyPublicKey   = "public_key"
+	dataKeyPrivateKey  = "private_key"
+	dataKeyType        = "key_type"
+	dataKeySignature   = "signature"
+	dataKeyShowPrivate = "show_private"
 )
 
-func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
-	error) {
-	var b logical.Backend
-	var err error
-	b, err = kv.PassthroughBackendFactory(ctx, conf)
-	if err != nil {
-		return nil, err
-	}
+const (
+	privKeyMaterial = "key_material"
+	privKeyType     = "key_type"
+	extraData       = "extra"
+)
 
-	pb := b.(*kv.PassthroughBackend)
-	pb.Paths = append(
-		[]*framework.Path{
+func Factory(ctx context.Context,
+	conf *logical.BackendConfig) (logical.Backend, error) {
+
+	b := &backend{}
+
+	backend := &framework.Backend{
+		BackendType: logical.TypeLogical,
+		Help:        strings.TrimSpace(backendHelp),
+
+		PathsSpecial: &logical.Paths{
+			SealWrapStorage: []string{
+				"*",
+			},
+		},
+
+		Paths: []*framework.Path{
 			{
 				Pattern: `(?P<path>.*)/sign`,
 
@@ -43,22 +56,15 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 							"little endian encoded int.",
 						Required: true,
 					},
-					dataKeyKey: {
-						Type: framework.TypeString,
-						Description: "Key name under which private key is " +
-							"stored.",
-						Required: true,
-						Default:  "key_data",
-					},
 				},
 
 				Operations: map[logical.Operation]framework.OperationHandler{
 					logical.ReadOperation: &framework.PathOperation{
-						Callback: handleSign(pb),
+						Callback: handleSign,
 					},
 				},
 
-				ExistenceCheck: handleExistenceCheck(),
+				ExistenceCheck: handleExistenceCheck,
 
 				HelpSynopsis:    "Sign integer with BabyJubJub key",
 				HelpDescription: "",
@@ -77,44 +83,15 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 				},
 				Operations: map[logical.Operation]framework.OperationHandler{
 					logical.CreateOperation: &framework.PathOperation{
-						Callback: handleMove(),
+						Callback: handleMove,
 					},
 					logical.UpdateOperation: &framework.PathOperation{
-						Callback: handleMove(),
+						Callback: handleMove,
 					},
 				},
-				ExistenceCheck:  handleExistenceCheck(),
+				ExistenceCheck:  handleExistenceCheck,
 				HelpSynopsis:    "Move to other path",
 				HelpDescription: "",
-			},
-			{
-				Pattern: `(?P<path>.*)/public`,
-
-				Fields: map[string]*framework.FieldSchema{
-					dataKeyPath: {
-						Type:        framework.TypeString,
-						Description: "Location of the secret.",
-					},
-					dataKeyKey: {
-						Type: framework.TypeString,
-						Description: "Key name under which private key is " +
-							"stored.",
-						Required: true,
-						Default:  "key_data",
-					},
-				},
-
-				Operations: map[logical.Operation]framework.OperationHandler{
-					logical.ReadOperation: &framework.PathOperation{
-						Callback: handlePublicKey(),
-					},
-				},
-
-				ExistenceCheck: handleExistenceCheck(),
-
-				HelpSynopsis: "Public Key for BabyJubJub private key",
-				HelpDescription: "Return hex encoded compressed public key " +
-					"for BabyJubJub private key",
 			},
 			{
 				Pattern: `(?P<path>.*)/random`,
@@ -124,31 +101,98 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 						Type:        framework.TypeString,
 						Description: "Location of the secret.",
 					},
-					dataKeyKey: {
+					dataKeyType: {
 						Type: framework.TypeString,
-						Description: "Key name under which private key is " +
-							"stored.",
+						Description: "Key type. Supported types: " +
+							"babyjubjub & ethereum",
 						Required: true,
-						Default:  "key_data",
+						AllowedValues: []interface{}{
+							keyTypeBJJStr, keyTypeEthereumStr},
 					},
 				},
 
 				Operations: map[logical.Operation]framework.OperationHandler{
 					logical.CreateOperation: &framework.PathOperation{
-						Callback: handleNewRandomKey(),
+						Callback: handleNewRandomKey,
 					},
 					logical.UpdateOperation: &framework.PathOperation{
-						Callback: handleNewRandomKey(),
+						Callback: handleNewRandomKey,
 					},
 				},
 
-				ExistenceCheck: handleExistenceCheck(),
+				ExistenceCheck: handleExistenceCheck,
 
 				HelpSynopsis:    "Create new random BabyJubJub private key",
 				HelpDescription: "",
 			},
+			{
+				Pattern: framework.MatchAllRegex("path"),
+
+				Fields: map[string]*framework.FieldSchema{
+					"path": {
+						Type:        framework.TypeString,
+						Description: "Location of the secret.",
+					},
+				},
+
+				Operations: map[logical.Operation]framework.OperationHandler{
+					logical.ReadOperation: &framework.PathOperation{
+						Callback: handleRead,
+					},
+					logical.CreateOperation: &framework.PathOperation{
+						Callback: handleWrite,
+					},
+					logical.UpdateOperation: &framework.PathOperation{
+						Callback: handleWrite,
+					},
+					logical.DeleteOperation: &framework.PathOperation{
+						Callback: handleDelete,
+					},
+					logical.ListOperation: &framework.PathOperation{
+						Callback: handleList,
+					},
+				},
+
+				ExistenceCheck: handleExistenceCheck,
+
+				HelpSynopsis:    strings.TrimSpace(backendHelpSynopsis),
+				HelpDescription: strings.TrimSpace(backendHelpDescription),
+			},
 		},
-		pb.Paths...)
+		Secrets: []*framework.Secret{
+			{
+				Type:  "kv",
+				Renew: handleRead,
+				Revoke: func(ctx context.Context, req *logical.Request,
+					data *framework.FieldData) (*logical.Response, error) {
+					// This is a no-op
+					return nil, nil
+				},
+			},
+		},
+	}
+
+	if conf == nil {
+		return nil, fmt.Errorf("Configuation passed into backend is nil")
+	}
+	_ = backend.Setup(ctx, conf)
+	b.Backend = backend
 
 	return b, nil
 }
+
+const backendHelp = `
+The backend handle operations on Baby JubJub & Ethereum keys.
+The keys are encrypted/decrypted by Vault: they are never stored
+unencrypted in the backend and the backend never has an opportunity to
+see the unencrypted value.
+`
+
+const backendHelpSynopsis = `
+The BJJ backend generate or import private keys for Baby JubJub or Ethereum.
+Allowing you to sign messages with these keys.
+`
+
+const backendHelpDescription = `
+The BJJ backend generate or import private keys for Baby JubJub or Ethereum.
+`

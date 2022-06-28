@@ -142,6 +142,74 @@ func handleNewRandomKey(ctx context.Context, req *logical.Request,
 	return nil, nil
 }
 
+func handleImport(ctx context.Context, req *logical.Request,
+	data *framework.FieldData) (*logical.Response, error) {
+
+	keyPath := data.Get(dataKeyPath).(string)
+	if keyPath == "" {
+		return nil, errors.New("key path is empty")
+	}
+
+	// Read the path
+	out, err := req.Storage.Get(ctx, keyPath)
+	if err != nil {
+		return nil, fmt.Errorf("read failed: %v", err)
+	}
+	if out != nil {
+		return logical.ErrorResponse("key already exists"), nil
+	}
+
+	keyTp, err := newKeyTypeFromString(data.Get(dataKeyType).(string))
+	if err != nil {
+		return logical.ErrorResponse(err.Error()), nil
+	}
+
+	keyMaterial, ok := data.Get(dataKeyPrivateKey).(string)
+	if !ok {
+		return nil, errors.New("private key is not found")
+	}
+
+	var privKey string
+	switch keyTp {
+	case keyTypeBJJ:
+		privKey, err = normalizeBjjKey(keyMaterial)
+	case keyTypeEthereum:
+		privKey, err = normalizeEthereumKey(keyMaterial)
+	default:
+		return logical.ErrorResponse("unsupported key type"), nil
+	}
+	if err != nil {
+		return logical.ErrorResponse(
+			fmt.Sprintf("key check failed: %v", err.Error())), nil
+	}
+
+	extra := make(map[string]interface{})
+	for k, v := range req.Data {
+		if k == dataKeyType {
+			continue
+		}
+		extra[k] = v
+	}
+
+	var obj = map[string]interface{}{
+		privKeyMaterial: privKey,
+		privKeyType:     keyTp.String(),
+		extraData:       extra,
+	}
+
+	entry, err := logical.StorageEntryJSON(keyPath, obj)
+	if err != nil {
+		return nil, fmt.Errorf("json encoding failed: %v", err)
+	}
+
+	err = req.Storage.Put(ctx, entry)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write: %v", err)
+	}
+
+	return nil, nil
+}
+
 func handleSign(ctx context.Context, req *logical.Request,
 	data *framework.FieldData) (*logical.Response, error) {
 
@@ -501,4 +569,33 @@ func signWithETH(privKeyHex string, dataToSign string) (string, error) {
 		return "", fmt.Errorf("unable to sign data with ethereum key: %v", err)
 	}
 	return hex.EncodeToString(sig), err
+}
+
+// take key hex string, try to convert it to BJJ private key, check for errors
+// and convert to hex string back
+func normalizeBjjKey(keyHex string) (string, error) {
+	keyBytes, err := hex.DecodeString(keyHex)
+	if err != nil {
+		return "", fmt.Errorf("unable to decode BJJ key from hex: %v", err)
+	}
+	if len(keyBytes) != len(babyjub.PrivateKey{}) {
+		return "", fmt.Errorf("BJJ key data length is incorrect")
+	}
+	return hex.EncodeToString(keyBytes), nil
+}
+
+// take key hex string, try to convert it to Ethereum private key, check for
+// errors and convert to hex string back
+func normalizeEthereumKey(keyHex string) (string, error) {
+	keyBytes, err := hex.DecodeString(keyHex)
+	if err != nil {
+		return "", fmt.Errorf("unable to decode Ethereum key from hex: %v", err)
+	}
+	key, err := crypto.ToECDSA(keyBytes)
+	if err != nil {
+		return "",
+			fmt.Errorf("unable to convert Ethereum key to ECDSA: %v", err)
+	}
+	keyBytes = crypto.FromECDSA(key)
+	return hex.EncodeToString(keyBytes), nil
 }

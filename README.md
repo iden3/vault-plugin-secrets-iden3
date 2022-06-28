@@ -44,6 +44,15 @@ curl -H "X-Vault-Token: <VAULT_TOKEN>" 'http://127.0.0.1:8200/v1/bjjkeys/keyXXX/
 
 # If private key stored not under `key_data` field, it can be overridden.
 curl -H "X-Vault-Token: <VAULT_TOKEN>" 'http://127.0.0.1:8200/v1/bjjkeys/keyXXX/sign?data=aa&key=priv_key'
+
+# Import new private key into vault
+vault write bjjkeys/import/key4 \
+  key_type=ethereum \
+  private_key=052e6bb7a24a3e0eb049d5dff3125cc52285252f33022ce8d150fcf6784a5a73
+# or
+vault kv put bjjkeys/import/key5 \
+  key_type=babyjubjub \
+  private_key=e40459d3db390b67b42d31fc89c7500b54b131a9f3acf156cfa1a24272f58900
 ```
 
 ## Create new random key

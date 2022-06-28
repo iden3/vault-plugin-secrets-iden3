@@ -126,6 +126,43 @@ func Factory(ctx context.Context,
 				HelpDescription: "",
 			},
 			{
+				Pattern: `import/(?P<path>.*)`,
+
+				Fields: map[string]*framework.FieldSchema{
+					dataKeyPath: {
+						Type:        framework.TypeString,
+						Description: "Location of the key.",
+					},
+					dataKeyType: {
+						Type: framework.TypeString,
+						Description: "Key type. Supported types: " +
+							"babyjubjub & ethereum",
+						Required: true,
+						AllowedValues: []interface{}{
+							keyTypeBJJStr, keyTypeEthereumStr},
+					},
+					dataKeyPrivateKey: {
+						Type:        framework.TypeString,
+						Description: "Hex encoded private key material.",
+						Required:    true,
+					},
+				},
+
+				Operations: map[logical.Operation]framework.OperationHandler{
+					logical.CreateOperation: &framework.PathOperation{
+						Callback: handleImport,
+					},
+					logical.UpdateOperation: &framework.PathOperation{
+						Callback: handleImport,
+					},
+				},
+
+				ExistenceCheck: handleExistenceCheck,
+
+				HelpSynopsis:    "Import private key",
+				HelpDescription: "",
+			},
+			{
 				Pattern: framework.MatchAllRegex("path"),
 
 				Fields: map[string]*framework.FieldSchema{

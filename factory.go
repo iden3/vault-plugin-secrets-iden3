@@ -51,8 +51,10 @@ func Factory(ctx context.Context,
 					},
 					dataKeyData: {
 						Type: framework.TypeString,
-						Description: "Data to sign. Hex representation of " +
-							"little endian encoded int.",
+						Description: "Data to sign. For BJJ data should be " +
+							"hex representation of little endian encoded int." +
+							" For ethereum key it should be hex encoded " +
+							"32-bytes hash.",
 						Required: true,
 					},
 				},

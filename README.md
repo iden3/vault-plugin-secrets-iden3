@@ -33,17 +33,50 @@ vault secrets enable -path=bjjkeys vault-plugin-secrets-bjj
 ## Use of plugin
 
 ```shell
-# Put new key into vault.
-# key_data is a default key name where plugin looks for private key value.
-# It can be overridden by specifying `key` param in the request.
-vault kv put bjjkeys/keyXXX key_data=9c2186b8f709bb81817492a69f87ead951fc49050c7fceb6155e26a9a255dee4
+# Generate new random key.
+# key_type may be either "ethereum" or "babyjubjub"
+vault write bjjkeys/new/key1 key_type=ethereum
+# Generate new random key annotated with some metadata.
+vault write bjjkeys/new/key2 key_type=babyjubjub extra1=value1 extra2=value2
 
-# Sign a message with the key `keyXXX`. `data` should be a hex encoded
-# little-endian representation of integer value to sign.
-curl -H "X-Vault-Token: <VAULT_TOKEN>" 'http://127.0.0.1:8200/v1/bjjkeys/keyXXX/sign?data=aa'
+# List keys
+vault list bjjkeys/keys
+# Keys
+# ----
+# key1
+# key2
 
-# If private key stored not under `key_data` field, it can be overridden.
-curl -H "X-Vault-Token: <VAULT_TOKEN>" 'http://127.0.0.1:8200/v1/bjjkeys/keyXXX/sign?data=aa&key=priv_key'
+# Read key data
+vault read bjjkeys/keys/key2
+# Key           Value
+# ---           -----
+# extra1         value1
+# extra2         value2
+# key_type       babyjubjub
+# public_key     e15da94d881ce6f83dd159ea99675200a731be95fa71740a94628ed219f0690a
+
+# Get key data with private key
+vault read bjjkeys/keys/key2
+# Key           Value
+# ---           -----
+# extra1         value1
+# extra2         value2
+# key_type       babyjubjub
+# private_key    9655feb98b2680723401867222d1250010dbd6001198ecd35333cad7a8de5a61
+# public_key     e15da94d881ce6f83dd159ea99675200a731be95fa71740a94628ed219f0690a
+
+# Move key2 to old_keys/key3
+vault write bjjkeys/move/key2 dest=bjjkeys/keys/old_keys/key3
+
+# Sign data with key.
+# For BJJ key data should be a hex representation of little endian encoded int.
+# For ethereum key it should be a hex encoded 32-bytes hash.
+vault read bjjkeys/sign/key1 \
+  data=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+# Key          Value
+# ---          -----
+# data         0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+# signature    cbe3edf96251643c538fe7535cd06105c20f707ae71b309d67f895d2221615e22ef64e5556f50d1d4bf879dc4f1f5a33093488843a82230a6561b9e69e08754501
 
 # Import new private key into vault
 vault write bjjkeys/import/key4 \
@@ -52,51 +85,9 @@ vault write bjjkeys/import/key4 \
 # or
 vault kv put bjjkeys/import/key5 \
   key_type=babyjubjub \
-  private_key=e40459d3db390b67b42d31fc89c7500b54b131a9f3acf156cfa1a24272f58900
-```
+  private_key=e40459d3db390b67b42d31fc89c7500b54b131a9f3acf156cfa1a24272f58900 \
+  extra_field=value1
 
-## Create new random key
-
-To create a new random key, send POST request to some path with `/random`
-suffix. Optionally private key field name may be overridden with parameter
-`key`. Default value for `key` is `key_data`.
-
-Extra data may be added to key with optionally additional parameters to POST
-request.
-
-```
-$ curl -X POST -H "X-Vault-Token: <VAULT_TOKEN>" \
-        'http://127.0.0.1:8200/v1/bjjsecret4/keys/k1/random'
-$ vault kv get bjjsecret4/keys/k1
-====== Data ======
-Key         Value
----         -----
-key_data    bebf34257cfd2a4bc39d15707d44a287f2a6f8bee53674111d6e1b93bc378a1a
-
-
-## Set custom field name for key data:
-
-$ curl -X POST -H "X-Vault-Token: <VAULT_TOKEN>" \
-        -d '{"key": "private_key"}' \
-        'http://127.0.0.1:8200/v1/bjjsecret4/keys/k2/random'
-
-$ vault kv get bjjsecret4/keys/k2
-======= Data =======
-Key            Value
----            -----
-private_key    bebf34257cfd2a4bc39d15707d44a287f2a6f8bee53674111d6e1b93bc378a1a
-
-
-## Set extra data for key:
-
-$ curl -X POST -H "X-Vault-Token: <VAULT_TOKEN>" \
-        -d '{"type": "BJJ"}' \
-        'http://127.0.0.1:8200/v1/bjjsecret4/keys/k3/random'
-
-$ vault kv get bjjsecret4/keys/k3
-======= Data =======
-Key        Value
----        -----
-key_data   bebf34257cfd2a4bc39d15707d44a287f2a6f8bee53674111d6e1b93bc378a1a
-type       BJJ
+# Delete key
+vault delete bjjsecret4/keys/old_keys/key3
 ```

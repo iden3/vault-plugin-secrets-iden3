@@ -1,4 +1,4 @@
-package vault_plugin_secrets_bjj
+package vault_plugin_secrets_bjj_test
 
 import (
 	"crypto/rand"
@@ -12,13 +12,6 @@ import (
 	"github.com/iden3/go-iden3-crypto/babyjub"
 	"github.com/iden3/go-iden3-crypto/utils"
 	"github.com/stretchr/testify/require"
-)
-
-const (
-	keyDest      = "dest"
-	keyPublicKey = "public_key"
-	keyData      = "data"
-	keySignature = "signature"
 )
 
 func newVaultClient(t testing.TB) (vaultCli *api.Client, mountPath string) {
@@ -49,11 +42,16 @@ func newVaultClient(t testing.TB) (vaultCli *api.Client, mountPath string) {
 }
 
 // create random key in vault and return path to it
-func newRandomBJJKey(t testing.TB, vaultCli *api.Client, keyPath string,
+func newRandomBJJKey(t testing.TB, vaultCli *api.Client, kPath keyPath,
 	extraData map[string]interface{}) {
 
-	rndKeyPath := path.Join(keyPath, "random")
-	_, err := vaultCli.Logical().Write(rndKeyPath, extraData)
+	data := map[string]interface{}{
+		"key_type": "babyjubjub",
+	}
+	for k, v := range extraData {
+		data[k] = v
+	}
+	_, err := vaultCli.Logical().Write(kPath.new(), data)
 	require.NoError(t, err)
 }
 
@@ -69,46 +67,28 @@ func getSecretData(secret *api.Secret) map[string]interface{} {
 	return secret.Data
 }
 
-func getPublicKey(t testing.TB, vaultCli *api.Client, keyPath string) string {
-	requestPath := path.Join(keyPath, "public")
-	secret, err := vaultCli.Logical().Read(requestPath)
-	if err != nil {
-		panic(err)
-	}
-
-	data := getSecretData(secret)
-
-	pubKeyStr, ok := data[keyPublicKey].(string)
-	if !ok {
-		panic("unable to get public key from secret")
-	}
-
-	return pubKeyStr
-}
-
-func randomKeyPath(basePath string) string {
+func randomString() string {
 	var rnd [16]byte
 	_, err := rand.Read(rnd[:])
 	if err != nil {
 		panic(err)
 	}
 
-	return path.Join(basePath, hex.EncodeToString(rnd[:]))
+	return hex.EncodeToString(rnd[:])
 }
 
-// move bjj key under new path
-func signBJJKey(vaultCli *api.Client, keyPath string,
+// sign data with key
+func signWithKey(vaultCli *api.Client, kPath keyPath,
 	dataToSign []byte) []byte {
 
 	dataStr := hex.EncodeToString(dataToSign)
-	data := map[string][]string{keyData: {dataStr}}
-	requestPath := path.Join(keyPath, "sign")
-	secret, err := vaultCli.Logical().ReadWithData(requestPath, data)
+	data := map[string][]string{"data": {dataStr}}
+	secret, err := vaultCli.Logical().ReadWithData(kPath.sign(), data)
 	if err != nil {
 		panic(err)
 	}
 	data2 := getSecretData(secret)
-	sigStr, ok := data2[keySignature].(string)
+	sigStr, ok := data2["signature"].(string)
 	if !ok {
 		panic("unable to get signature from secret")
 	}
@@ -119,11 +99,10 @@ func signBJJKey(vaultCli *api.Client, keyPath string,
 	return sig
 }
 
-// move bjj key under new path
-func moveBJJKey(vaultCli *api.Client, oldPath, newPath string) {
-	data := map[string]interface{}{keyDest: newPath}
-	requestPath := path.Join(oldPath, "move")
-	_, err := vaultCli.Logical().Write(requestPath, data)
+// move key under new path
+func moveKey(vaultCli *api.Client, oldPath, newPath keyPath) {
+	data := map[string]interface{}{"dest": newPath.keys()}
+	_, err := vaultCli.Logical().Write(oldPath.move(), data)
 	if err != nil {
 		panic(err)
 	}
@@ -140,6 +119,35 @@ func dataAtPath(t testing.TB, vaultCli *api.Client,
 	return getSecretData(secret)
 }
 
+type keyPath struct {
+	mountPath string
+	keyPath   string
+}
+
+func (p keyPath) insert(verb string) string {
+	return path.Join(p.mountPath, verb, p.keyPath)
+}
+
+func (p keyPath) new() string {
+	return p.insert("new")
+}
+
+func (p keyPath) keys() string {
+	return p.insert("keys")
+}
+
+func (p keyPath) private() string {
+	return p.insert("private")
+}
+
+func (p keyPath) sign() string {
+	return p.insert("sign")
+}
+
+func (p keyPath) move() string {
+	return p.insert("move")
+}
+
 func TestBJJPlugin(t *testing.T) {
 	vaultCli, mountPath := newVaultClient(t)
 
@@ -153,42 +161,52 @@ func TestBJJPlugin(t *testing.T) {
 		})
 	}
 
-	keyPath := randomKeyPath(mountPath)
-	newRandomBJJKey(t, vaultCli, keyPath,
+	kPath := keyPath{mountPath: mountPath, keyPath: randomString()}
+	newRandomBJJKey(t, vaultCli, kPath,
 		map[string]interface{}{"extra_key": "value"})
-	rmKey(keyPath)
+	rmKey(kPath.keys())
 
-	secData := dataAtPath(t, vaultCli, keyPath)
-	require.Equal(t, "value", secData["extra_key"])
+	publicSecData := dataAtPath(t, vaultCli, kPath.keys())
+	privateSecData := dataAtPath(t, vaultCli, kPath.private())
 
 	var privKey babyjub.PrivateKey
-	privKeyStr, err := hex.DecodeString(secData["key_data"].(string))
+	privKeyStr, err := hex.DecodeString(privateSecData["private_key"].(string))
 	require.NoError(t, err)
 	copy(privKey[:], privKeyStr)
 	pubKey1Comp := privKey.Public().Compress()
 
-	pubKey2Str := getPublicKey(t, vaultCli, keyPath)
-	var pubKey2Comp babyjub.PublicKeyComp
-	pubKey2Bytes, err := hex.DecodeString(pubKey2Str)
-	require.NoError(t, err)
-	copy(pubKey2Comp[:], pubKey2Bytes)
+	wantPublicData := map[string]interface{}{
+		"key_type":   "babyjubjub",
+		"public_key": hex.EncodeToString(pubKey1Comp[:]),
+		"extra_key":  "value",
+	}
+	require.Equal(t, wantPublicData, publicSecData)
 
-	require.Equal(t, pubKey1Comp, pubKey2Comp)
+	wantPrivateData := map[string]interface{}{
+		"key_type":    "babyjubjub",
+		"public_key":  hex.EncodeToString(pubKey1Comp[:]),
+		"private_key": hex.EncodeToString(privKey[:]),
+		"extra_key":   "value",
+	}
+	require.Equal(t, wantPrivateData, privateSecData)
 
 	// Test sign
 	nonce := big.NewInt(100500)
 	nonceBytes := utils.SwapEndianness(nonce.Bytes())
 	sig1 := privKey.SignPoseidon(nonce).Compress()
-	sig2Bytes := signBJJKey(vaultCli, keyPath, nonceBytes)
+	sig2Bytes := signWithKey(vaultCli, kPath, nonceBytes)
 	var sig2 babyjub.SignatureComp
 	copy(sig2[:], sig2Bytes)
 	require.Equal(t, sig1, sig2)
 
 	// Test moving
-	newKeyPath := randomKeyPath(mountPath)
-	moveBJJKey(vaultCli, keyPath, newKeyPath)
-	newSecData := dataAtPath(t, vaultCli, newKeyPath)
-	require.Equal(t, secData, newSecData)
+	newKPath := keyPath{mountPath: mountPath, keyPath: randomString()}
+	moveKey(vaultCli, kPath, newKPath)
+	rmKey(newKPath.keys())
+	newPublicSecData := dataAtPath(t, vaultCli, newKPath.keys())
+	require.Equal(t, wantPublicData, newPublicSecData)
+	newPrivateSecData := dataAtPath(t, vaultCli, newKPath.private())
+	require.Equal(t, wantPrivateData, newPrivateSecData)
 
-	require.Nil(t, dataAtPath(t, vaultCli, keyPath))
+	require.Nil(t, dataAtPath(t, vaultCli, kPath.keys()))
 }

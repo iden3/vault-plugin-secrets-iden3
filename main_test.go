@@ -77,8 +77,10 @@ func randomString() string {
 	return hex.EncodeToString(rnd[:])
 }
 
-// move bjj key under new path
-func signBJJKey(vaultCli *api.Client, kPath keyPath, dataToSign []byte) []byte {
+// sign data with key
+func signWithKey(vaultCli *api.Client, kPath keyPath,
+	dataToSign []byte) []byte {
+
 	dataStr := hex.EncodeToString(dataToSign)
 	data := map[string][]string{"data": {dataStr}}
 	secret, err := vaultCli.Logical().ReadWithData(kPath.sign(), data)
@@ -97,8 +99,8 @@ func signBJJKey(vaultCli *api.Client, kPath keyPath, dataToSign []byte) []byte {
 	return sig
 }
 
-// move bjj key under new path
-func moveBJJKey(vaultCli *api.Client, oldPath, newPath keyPath) {
+// move key under new path
+func moveKey(vaultCli *api.Client, oldPath, newPath keyPath) {
 	data := map[string]interface{}{"dest": newPath.keys()}
 	_, err := vaultCli.Logical().Write(oldPath.move(), data)
 	if err != nil {
@@ -192,14 +194,14 @@ func TestBJJPlugin(t *testing.T) {
 	nonce := big.NewInt(100500)
 	nonceBytes := utils.SwapEndianness(nonce.Bytes())
 	sig1 := privKey.SignPoseidon(nonce).Compress()
-	sig2Bytes := signBJJKey(vaultCli, kPath, nonceBytes)
+	sig2Bytes := signWithKey(vaultCli, kPath, nonceBytes)
 	var sig2 babyjub.SignatureComp
 	copy(sig2[:], sig2Bytes)
 	require.Equal(t, sig1, sig2)
 
 	// Test moving
 	newKPath := keyPath{mountPath: mountPath, keyPath: randomString()}
-	moveBJJKey(vaultCli, kPath, newKPath)
+	moveKey(vaultCli, kPath, newKPath)
 	rmKey(newKPath.keys())
 	newPublicSecData := dataAtPath(t, vaultCli, newKPath.keys())
 	require.Equal(t, wantPublicData, newPublicSecData)

@@ -52,7 +52,7 @@ func TestETHKeys(t *testing.T) {
 	pubKey, ok := privKey.Public().(*ecdsa.PublicKey)
 	require.True(t, ok)
 
-	pubKeyBytes := crypto.FromECDSAPub(pubKey)
+	pubKeyBytes := crypto.CompressPubkey(pubKey)
 	privKeyBytes := crypto.FromECDSA(privKey)
 
 	wantPublicData := map[string]interface{}{

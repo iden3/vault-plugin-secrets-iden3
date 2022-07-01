@@ -506,7 +506,7 @@ func ethPubKeyFromHex(keyStr string) (string, error) {
 		return "", errors.New("unable to convert private key to public key")
 	}
 
-	return hex.EncodeToString(crypto.FromECDSAPub(pubKey)), nil
+	return hex.EncodeToString(crypto.CompressPubkey(pubKey)), nil
 }
 
 func extractKeyAndType(data map[string]interface{}) (string, keyType, error) {

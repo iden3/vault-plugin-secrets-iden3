@@ -13,7 +13,7 @@ builds:
       - linux
       - windows
       - darwin
-    dir: cmd/vault-plugin-secrets-bjj
+    dir: cmd/vault-plugin-secrets-iden3
 #archives:
 #  - replacements:
 #      darwin: Darwin

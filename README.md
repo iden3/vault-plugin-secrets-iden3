@@ -1,11 +1,11 @@
-# vault-plugin-secrets-bjj
+# vault-plugin-secrets-iden3
 
 Modification of vault-plugin-secrets-kv/v1 with signing capability.
 
 ## Build plugin
 
 ```shell
-cd cmd/vault-plugin-secrets-bjj
+cd cmd/vault-plugin-secrets-iden3
 go build
 ```
 
@@ -13,21 +13,21 @@ go build
 
 ```shell
 cd <path_to_vault_plugins_dir>
-rm vault-plugin-secrets-bjj
+rm vault-plugin-secrets-iden3
 # copy binary plugin to vault's plugins directory
-cp <path_to_vault_plugin_secrets_bjj>/cmd/vault-plugin-secrets-bjj/vault-plugin-secrets-bjj ./
+cp <path_to_vault_plugin_secrets_bjj>/cmd/vault-plugin-secrets-iden3/vault-plugin-secrets-iden3 ./
 # get sha265 of plugin binary
-openssl dgst -sha256 vault-plugin-secrets-bjj
+openssl dgst -sha256 vault-plugin-secrets-iden3
 # register plugin with vault
-vault plugin register -sha256=<checksum from previous step> vault-plugin-secrets-bjj
+vault plugin register -sha256=<checksum from previous step> vault-plugin-secrets-iden3
 # if plugin was registered earlier, reload it.
-vault plugin reload -plugin=vault-plugin-secrets-bjj
+vault plugin reload -plugin=vault-plugin-secrets-iden3
 ```
 
 ## Enable secret engine
 
 ```shell
-vault secrets enable -path=bjjkeys vault-plugin-secrets-bjj
+vault secrets enable -path=bjjkeys vault-plugin-secrets-iden3
 ```
 
 ## Use of plugin

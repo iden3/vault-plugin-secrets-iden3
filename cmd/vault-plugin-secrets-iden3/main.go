@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
-	bjj "github.com/iden3/vault-plugin-secrets-bjj"
+	iden3 "github.com/iden3/vault-plugin-secrets-iden3"
 )
 
 func main() {
@@ -24,7 +24,7 @@ func main() {
 	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
 
 	err = plugin.Serve(&plugin.ServeOpts{
-		BackendFactoryFunc: bjj.Factory,
+		BackendFactoryFunc: iden3.Factory,
 		TLSProviderFunc:    tlsProviderFunc,
 	})
 	if err != nil {

@@ -24,9 +24,9 @@ func newVaultClient(t testing.TB) (vaultCli *api.Client, mountPath string) {
 		t.Skip("vault token is not configured")
 	}
 
-	mountPath = os.Getenv("VAULT_BJJ_PATH")
+	mountPath = os.Getenv("VAULT_IDEN3_PATH")
 	if mountPath == "" {
-		t.Skip("BJJ plugin mount path is not set")
+		t.Skip("IDEN3 plugin mount path is not set")
 	}
 
 	config := api.DefaultConfig()

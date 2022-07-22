@@ -248,10 +248,10 @@ see the unencrypted value.
 `
 
 const backendHelpSynopsis = `
-The BJJ backend generate or import private keys for Baby JubJub or Ethereum.
+The IDEN3 backend generate or import private keys for Baby JubJub or Ethereum.
 Allowing you to sign messages with these keys.
 `
 
 const backendHelpDescription = `
-The BJJ backend generate or import private keys for Baby JubJub or Ethereum.
+The IDEN3 backend generate or import private keys for Baby JubJub or Ethereum.
 `

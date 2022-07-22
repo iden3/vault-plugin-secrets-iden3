@@ -1,4 +1,4 @@
-module github.com/iden3/vault-plugin-secrets-bjj
+module github.com/iden3/vault-plugin-secrets-iden3
 
 go 1.18
 

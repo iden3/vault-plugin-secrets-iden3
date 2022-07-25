@@ -185,7 +185,7 @@ func handleImport(ctx context.Context, req *logical.Request,
 
 	extra := make(map[string]interface{})
 	for k, v := range req.Data {
-		if k == dataKeyType {
+		if k == dataKeyType || k == dataKeyPrivateKey {
 			continue
 		}
 		extra[k] = v

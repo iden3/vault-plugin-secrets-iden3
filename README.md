@@ -56,7 +56,7 @@ vault read bjjkeys/keys/key2
 # public_key     e15da94d881ce6f83dd159ea99675200a731be95fa71740a94628ed219f0690a
 
 # Get key data with private key
-vault read bjjkeys/keys/key2
+vault read bjjkeys/private/key2
 # Key           Value
 # ---           -----
 # extra1         value1

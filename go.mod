@@ -1,13 +1,13 @@
 module github.com/iden3/vault-plugin-secrets-iden3
 
-go 1.18
+go 1.20
 
 require (
-	github.com/ethereum/go-ethereum v1.11.4
-	github.com/hashicorp/go-hclog v1.4.0
-	github.com/hashicorp/vault/api v1.9.0
-	github.com/hashicorp/vault/sdk v0.8.1
-	github.com/iden3/go-iden3-crypto v0.0.14
+	github.com/ethereum/go-ethereum v1.11.6
+	github.com/hashicorp/go-hclog v1.5.0
+	github.com/hashicorp/vault/api v1.9.1
+	github.com/hashicorp/vault/sdk v0.9.0
+	github.com/iden3/go-iden3-crypto v0.0.15
 	github.com/stretchr/testify v1.8.2
 )
 
@@ -24,7 +24,7 @@ require (
 	github.com/frankban/quicktest v1.13.0 // indirect
 	github.com/go-test/deep v1.0.7 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/golang/snappy v0.0.4 // indirect
+	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
@@ -43,6 +43,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
+	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect

@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - run: go build -o /vault/plugins/vault-plugin-secrets-iden3
+      - run: go build -o /vault/plugins/vault-plugin-secrets-iden3 -x
         working-directory: cmd/vault-plugin-secrets-iden3
 
       - uses: actions/cache@v4

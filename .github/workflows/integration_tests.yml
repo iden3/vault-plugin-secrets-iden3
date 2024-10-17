@@ -20,13 +20,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - run: git config --global --add safe.directory $GITHUB_WORKSPACE
-      - run: |
-          ls -la
-          pwd
-          git status
-
-      - run: go build -o /vault/plugins/vault-plugin-secrets-iden3 -x
-        working-directory: cmd/vault-plugin-secrets-iden3
 
       - uses: actions/cache@v4
         with:
@@ -38,6 +31,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - run: go build -o /vault/plugins/vault-plugin-secrets-iden3
+        working-directory: cmd/vault-plugin-secrets-iden3
+
       - run: >
           export PLUGIN_SHA256=`openssl dgst -r -sha256 /vault/plugins/vault-plugin-secrets-iden3 | awk '{print $1}'` &&
           curl -X PUT --fail -i -H "X-Vault-Token: ${VAULT_TOKEN}"
@@ -48,7 +44,7 @@ jobs:
           -d '{"type":"vault-plugin-secrets-iden3","description":"","config":{"options":null,"default_lease_ttl":"0s","max_lease_ttl":"0s","force_no_cache":false},"local":false,"seal_wrap":false,"external_entropy_access":false,"options":null}'
           ${VAULT_ADDR}/v1/sys/mounts/${VAULT_IDEN3_PATH}
 
-      - run: go test -v -race -timeout=60s ./...
+      - run: go test -v -race -timeout=60s ./cmd/vault-plugin-secrets-iden3/ -args -vault
 
     services:
       vault:

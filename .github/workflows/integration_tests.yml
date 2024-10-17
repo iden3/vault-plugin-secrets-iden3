@@ -8,7 +8,7 @@ jobs:
   test:
     runs-on: ubuntu-22.04
     container:
-      image: golang:1.20.4-alpine3.17
+      image: golang:1.23.2
       volumes:
         - vault_plugins:/vault/plugins
     env:
@@ -17,14 +17,11 @@ jobs:
       VAULT_IDEN3_PATH: iden3
 
     steps:
-      - run: apk add --update-cache openssl curl build-base
+      - uses: actions/checkout@v4
 
-      - uses: actions/checkout@v3
+      - run: git config --global --add safe.directory $GITHUB_WORKSPACE
 
-      - run: go build -o /vault/plugins/vault-plugin-secrets-iden3
-        working-directory: cmd/vault-plugin-secrets-iden3
-
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cache/go-build
@@ -34,21 +31,26 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - run: go build -o /vault/plugins/vault-plugin-secrets-iden3
+        working-directory: cmd/vault-plugin-secrets-iden3
+        env:
+          CGO_ENABLED: 0
+
       - run: >
           export PLUGIN_SHA256=`openssl dgst -r -sha256 /vault/plugins/vault-plugin-secrets-iden3 | awk '{print $1}'` &&
-          curl -X PUT --fail -i -H "X-Vault-Token: ${VAULT_TOKEN}"
+          curl -X PUT --fail -s -i -H "X-Vault-Token: ${VAULT_TOKEN}"
           -d "{\"type\":0,\"command\":\"vault-plugin-secrets-iden3\",\"sha256\":\"${PLUGIN_SHA256}\"}"
           ${VAULT_ADDR}/v1/sys/plugins/catalog/vault-plugin-secrets-iden3
       - run: >
-          curl -X POST --fail -s -H "X-Vault-Token: ${VAULT_TOKEN}" 
+          curl -X POST --fail -s -i -H "X-Vault-Token: ${VAULT_TOKEN}" 
           -d '{"type":"vault-plugin-secrets-iden3","description":"","config":{"options":null,"default_lease_ttl":"0s","max_lease_ttl":"0s","force_no_cache":false},"local":false,"seal_wrap":false,"external_entropy_access":false,"options":null}'
           ${VAULT_ADDR}/v1/sys/mounts/${VAULT_IDEN3_PATH}
 
-      - run: go test -v -race -timeout=60s ./...
+      - run: go test -v -race -timeout=60s ./cmd/vault-plugin-secrets-iden3/ -args -vault
 
     services:
       vault:
-        image: vault:1.13.2
+        image: hashicorp/vault:1.18.0
         ports:
           - 8200:8200
         volumes:

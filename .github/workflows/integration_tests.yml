@@ -17,8 +17,6 @@ jobs:
       VAULT_IDEN3_PATH: iden3
 
     steps:
-      - run: apk add --update-cache openssl curl build-base
-
       - uses: actions/checkout@v4
 
       - run: go build -o /vault/plugins/vault-plugin-secrets-iden3

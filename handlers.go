@@ -3,6 +3,8 @@ package vault_plugin_secrets_bjj
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -108,6 +110,8 @@ func handleNewRandomKey(ctx context.Context, req *logical.Request,
 		privKey = randomBjjKey()
 	case keyTypeEthereum:
 		privKey, err = randomEthereumKey()
+	case keyTypeEd25519:
+		privKey, err = randomEd25519Key()
 	default:
 		return logical.ErrorResponse("unsupported key type"), nil
 	}
@@ -175,6 +179,8 @@ func handleImport(ctx context.Context, req *logical.Request,
 		privKey, err = normalizeBjjKey(keyMaterial)
 	case keyTypeEthereum:
 		privKey, err = normalizeEthereumKey(keyMaterial)
+	case keyTypeEd25519:
+		privKey, err = normalizeEd25519Key(keyMaterial)
 	default:
 		return logical.ErrorResponse("unsupported key type"), nil
 	}
@@ -245,6 +251,8 @@ func handleSign(ctx context.Context, req *logical.Request,
 		signature, err = signWithBJJ(pkStr, dataToSign)
 	case keyTypeEthereum:
 		signature, err = signWithETH(pkStr, dataToSign)
+	case keyTypeEd25519:
+		signature, err = signWithEd25519(pkStr, dataToSign)
 	default:
 		return logical.ErrorResponse("unsupported key type"), nil
 	}
@@ -301,6 +309,8 @@ func getReadHandler(showPrivate bool) framework.OperationFunc {
 			outData[dataKeyPublicKey], err = bjjPubKeyFromHex(privKeyStr)
 		case keyTypeEthereum:
 			outData[dataKeyPublicKey], err = ethPubKeyFromHex(privKeyStr)
+		case keyTypeEd25519:
+			outData[dataKeyPublicKey], err = ed25519PubKeyFromHex(privKeyStr)
 		default:
 			return logical.ErrorResponse("unsupported key type"), nil
 		}
@@ -425,6 +435,8 @@ func (t keyType) String() string {
 		return keyTypeBJJStr
 	case keyTypeEthereum:
 		return keyTypeEthereumStr
+	case keyTypeEd25519:
+		return keyTypeEd25519Str
 	default:
 		return "unknown"
 	}
@@ -434,11 +446,13 @@ const (
 	keyTypeUnknown keyType = iota
 	keyTypeBJJ
 	keyTypeEthereum
+	keyTypeEd25519
 )
 
 const (
 	keyTypeBJJStr      = "babyjubjub"
 	keyTypeEthereumStr = "ethereum"
+	keyTypeEd25519Str  = "ed25519"
 )
 
 func newKeyTypeFromString(tp string) (keyType, error) {
@@ -447,6 +461,8 @@ func newKeyTypeFromString(tp string) (keyType, error) {
 		return keyTypeBJJ, nil
 	case keyTypeEthereumStr:
 		return keyTypeEthereum, nil
+	case keyTypeEd25519Str:
+		return keyTypeEd25519, nil
 	default:
 		return keyTypeUnknown, errors.New("unknown key type")
 	}
@@ -467,6 +483,15 @@ func randomEthereumKey() (string, error) {
 	return hex.EncodeToString(crypto.FromECDSA(key)), nil
 }
 
+// hex representation of the random Ed25519 key
+func randomEd25519Key() (string, error) {
+	_, key, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(key), nil
+}
+
 func decodeBjjPrivKey(keyStr string) (babyjub.PrivateKey, error) {
 	var key babyjub.PrivateKey
 	privKeyBytes, err := hex.DecodeString(keyStr)
@@ -484,6 +509,17 @@ func decodeBjjPrivKey(keyStr string) (babyjub.PrivateKey, error) {
 
 func decodeEthPrivKey(keyStr string) (*ecdsa.PrivateKey, error) {
 	return crypto.HexToECDSA(keyStr)
+}
+
+func decodeEd25519PrivKey(keyStr string) (ed25519.PrivateKey, error) {
+	data, err := hex.DecodeString(keyStr)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode ed25519 private key: %w", err)
+	}
+	if len(data) != ed25519.PrivateKeySize {
+		return nil, fmt.Errorf("invalid ed25519 private key size: %d", len(data))
+	}
+	return data, nil
 }
 
 func bjjPubKeyFromHex(keyStr string) (string, error) {
@@ -507,6 +543,20 @@ func ethPubKeyFromHex(keyStr string) (string, error) {
 	}
 
 	return hex.EncodeToString(crypto.CompressPubkey(pubKey)), nil
+}
+
+func ed25519PubKeyFromHex(keyStr string) (string, error) {
+	key, err := decodeEd25519PrivKey(keyStr)
+	if err != nil {
+		return "", err
+	}
+
+	pubKey, ok := key.Public().(ed25519.PublicKey)
+	if !ok {
+		return "", errors.New("unable to convert private key to public key")
+	}
+
+	return hex.EncodeToString(pubKey), nil
 }
 
 func extractKeyAndType(data map[string]interface{}) (string, keyType, error) {
@@ -568,6 +618,20 @@ func signWithETH(privKeyHex string, dataToSign string) (string, error) {
 	return hex.EncodeToString(sig), err
 }
 
+func signWithEd25519(privKeyHex string, dataToSign string) (string, error) {
+	privKey, err := decodeEd25519PrivKey(privKeyHex)
+	if err != nil {
+		return "", err
+	}
+
+	data, err := hex.DecodeString(dataToSign)
+	if err != nil {
+		return "", fmt.Errorf(
+			"unable to decode data to sign from hex string to bytes: %v", err)
+	}
+	return hex.EncodeToString(ed25519.Sign(privKey, data)), nil
+}
+
 // take key hex string, try to convert it to BJJ private key, check for errors
 // and convert to hex string back
 func normalizeBjjKey(keyHex string) (string, error) {
@@ -595,4 +659,14 @@ func normalizeEthereumKey(keyHex string) (string, error) {
 	}
 	keyBytes = crypto.FromECDSA(key)
 	return hex.EncodeToString(keyBytes), nil
+}
+
+// take key hex string, try to convert it to Ed25519 private key, check for
+// errors and convert to hex string back
+func normalizeEd25519Key(keyHex string) (string, error) {
+	key, err := decodeEd25519PrivKey(keyHex)
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(key), nil
 }

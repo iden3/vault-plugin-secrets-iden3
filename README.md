@@ -19,7 +19,7 @@ cp <path_to_vault_plugin_secrets_bjj>/cmd/vault-plugin-secrets-iden3/vault-plugi
 # get sha265 of plugin binary
 openssl dgst -sha256 vault-plugin-secrets-iden3
 # register plugin with vault
-vault plugin register -sha256=<checksum from previous step> vault-plugin-secrets-iden3
+vault plugin register -sha256=<checksum from previous step> secret vault-plugin-secrets-iden3
 # if plugin was registered earlier, reload it.
 vault plugin reload -plugin=vault-plugin-secrets-iden3
 ```

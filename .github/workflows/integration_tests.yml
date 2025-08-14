@@ -8,7 +8,7 @@ jobs:
   test:
     runs-on: ubuntu-22.04
     container:
-      image: golang:1.23.2
+      image: golang:1.24.6
       volumes:
         - vault_plugins:/vault/plugins
     env:

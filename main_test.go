@@ -1,6 +1,7 @@
 package vault_plugin_secrets_bjj_test
 
 import (
+	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/hex"
 	"math/big"
@@ -209,4 +210,19 @@ func TestBJJPlugin(t *testing.T) {
 	require.Equal(t, wantPrivateData, newPrivateSecData)
 
 	require.Nil(t, dataAtPath(t, vaultCli, kPath.keys()))
+}
+
+func TestName(t *testing.T) {
+	data := []byte{1, 2, 3}
+	pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	sig := ed25519.Sign(privKey, data)
+	ok := ed25519.Verify(pubKey, data, sig)
+	require.True(t, ok)
+
+	t.Logf("%v", hex.EncodeToString(privKey))
+
+	ed25519.PrivateKeySize
+	privKeyBytes := []byte(privKey)
+	ed25519.PrivateKey
 }

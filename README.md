@@ -2,6 +2,11 @@
 
 Modification of vault-plugin-secrets-kv/v1 with signing capability.
 
+Support for the following key types:
+  * babyjubjub
+  * ethereum
+  * ed25519
+
 ## Build plugin
 
 ```shell
@@ -19,7 +24,7 @@ cp <path_to_vault_plugin_secrets_bjj>/cmd/vault-plugin-secrets-iden3/vault-plugi
 # get sha265 of plugin binary
 openssl dgst -sha256 vault-plugin-secrets-iden3
 # register plugin with vault
-vault plugin register -sha256=<checksum from previous step> vault-plugin-secrets-iden3
+vault plugin register -sha256=<checksum from previous step> secret vault-plugin-secrets-iden3
 # if plugin was registered earlier, reload it.
 vault plugin reload -plugin=vault-plugin-secrets-iden3
 ```
@@ -34,7 +39,7 @@ vault secrets enable -path=bjjkeys vault-plugin-secrets-iden3
 
 ```shell
 # Generate new random key.
-# key_type may be either "ethereum" or "babyjubjub"
+# key_type may be either "ethereum", "babyjubjub" or "ed25519"
 vault write bjjkeys/new/key1 key_type=ethereum
 # Generate new random key annotated with some metadata.
 vault write bjjkeys/new/key2 key_type=babyjubjub extra1=value1 extra2=value2
@@ -71,6 +76,7 @@ vault write bjjkeys/move/key2 dest=bjjkeys/keys/old_keys/key3
 # Sign data with key.
 # For BJJ key data should be a hex representation of little endian encoded int.
 # For ethereum key it should be a hex encoded 32-bytes hash.
+# For ed25519 it could be arbitrary hex-encoded byte array.
 vault read bjjkeys/sign/key1 \
   data=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 # Key          Value

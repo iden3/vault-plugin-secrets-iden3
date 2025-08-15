@@ -28,6 +28,9 @@ const (
 func Factory(ctx context.Context,
 	conf *logical.BackendConfig) (logical.Backend, error) {
 
+	supportedTypes := strings.Join([]string{keyTypeBJJStr,
+		keyTypeEthereumStr, keyTypeEd25519Str}, ", ")
+
 	b := &backend{}
 
 	backend := &framework.Backend{
@@ -54,7 +57,8 @@ func Factory(ctx context.Context,
 						Description: "Data to sign. For BJJ data should be " +
 							"hex representation of little endian encoded int." +
 							" For ethereum key it should be hex encoded " +
-							"32-bytes hash.",
+							"32-bytes hash. For Ed25519 data is a hex " +
+							"encoded arbitrary byte array.",
 						Required: true,
 					},
 				},
@@ -67,7 +71,7 @@ func Factory(ctx context.Context,
 
 				ExistenceCheck: handleExistenceCheck,
 
-				HelpSynopsis:    "Sign integer with BabyJubJub key",
+				HelpSynopsis:    "Sign payload with a private key",
 				HelpDescription: "",
 			},
 			{
@@ -105,10 +109,10 @@ func Factory(ctx context.Context,
 					dataKeyType: {
 						Type: framework.TypeString,
 						Description: "Key type. Supported types: " +
-							"babyjubjub & ethereum",
+							supportedTypes,
 						Required: true,
-						AllowedValues: []interface{}{
-							keyTypeBJJStr, keyTypeEthereumStr},
+						AllowedValues: []interface{}{keyTypeBJJStr,
+							keyTypeEthereumStr, keyTypeEd25519Str},
 					},
 				},
 
@@ -137,10 +141,10 @@ func Factory(ctx context.Context,
 					dataKeyType: {
 						Type: framework.TypeString,
 						Description: "Key type. Supported types: " +
-							"babyjubjub & ethereum",
+							supportedTypes,
 						Required: true,
-						AllowedValues: []interface{}{
-							keyTypeBJJStr, keyTypeEthereumStr},
+						AllowedValues: []interface{}{keyTypeBJJStr,
+							keyTypeEthereumStr, keyTypeEd25519Str},
 					},
 					dataKeyPrivateKey: {
 						Type:        framework.TypeString,
@@ -241,17 +245,18 @@ func Factory(ctx context.Context,
 }
 
 const backendHelp = `
-The backend handle operations on Baby JubJub & Ethereum keys.
+The backend handle operations on BabyJubJub, Ethereum & Ed25519 keys.
 The keys are encrypted/decrypted by Vault: they are never stored
 unencrypted in the backend and the backend never has an opportunity to
 see the unencrypted value.
 `
 
 const backendHelpSynopsis = `
-The IDEN3 backend generate or import private keys for Baby JubJub or Ethereum.
-Allowing you to sign messages with these keys.
+The IDEN3 backend generate or import private keys for BabyJubJub, Ethereum or 
+Ed25519. Allowing you to sign messages with these keys.
 `
 
 const backendHelpDescription = `
-The IDEN3 backend generate or import private keys for Baby JubJub or Ethereum.
+The IDEN3 backend generate or import private keys for BabyJubJub, Ethereum or
+Ed25519.
 `
